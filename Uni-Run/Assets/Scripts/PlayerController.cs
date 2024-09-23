@@ -1,4 +1,8 @@
-﻿using UnityEngine;
+﻿using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using LSL;
+using LSL4Unity.Utils;
 
 // PlayerController는 플레이어 캐릭터로서 Player 게임 오브젝트를 제어한다.
 public class PlayerController : MonoBehaviour {
@@ -13,6 +17,18 @@ public class PlayerController : MonoBehaviour {
    private Animator animator; // 사용할 애니메이터 컴포넌트
    private AudioSource playerAudio; // 사용할 오디오 소스 컴포넌트
 
+   #region LSL4Unity_inlet
+    public string StreamName; // must be same with the OpenViBE streamname
+    ContinuousResolver resolver;
+    double max_chunk_duration = 0.5; // epoch interval 2.0sec
+    private StreamInlet inlet;
+
+    private float[,] data_buffer;
+    private double[] timestamp_buffer;
+    float EEGpow;
+    bool isSatisfied = false;
+    #endregion
+
    private void Start() {
        // 초기화
        playerRigidbody = GetComponent<Rigidbody2D>();
@@ -26,15 +42,34 @@ public class PlayerController : MonoBehaviour {
         return;
        }
 
-       if(Input.GetMouseButtonDown(0) && jumpCount < 2){
-        jumpCount++;
-        playerRigidbody.velocity = Vector2.zero;
-        playerRigidbody.AddForce(new Vector2(0, jumpForce));
-        playerAudio.Play();
-       }
-       else if(Input.GetMouseButtonUp(0) && playerRigidbody.velocity.y > 0){
-        playerRigidbody.velocity = playerRigidbody.velocity * 0.5f;
-       }
+        #region LSL_inlet_update
+        if(inlet!=null){
+            int samples_returned = inlet.pull_chunk(data_buffer, timestamp_buffer);
+            if(samples_returned > 0){
+                float x = data_buffer[samples_returned - 1, 0];
+
+                Debug.Log(x);
+                EEGpow = x;
+
+                if(EEGpow < 2000){
+                    return;
+                }
+                else{
+                    if(Input.GetMouseButtonDown(0) || jumpCount < 2){
+                        jumpCount++;
+                        playerRigidbody.velocity = Vector2.zero;
+                        playerRigidbody.AddForce(new Vector2(0, jumpForce));
+                        playerAudio.Play();
+                    }
+                    else if(Input.GetMouseButtonUp(0) || playerRigidbody.velocity.y > 0){
+                        playerRigidbody.velocity = playerRigidbody.velocity * 0.5f;
+                    }
+                }
+            }
+        }
+        #endregion
+        
+       
 
        animator.SetBool("Grounded", isGrounded);
    }

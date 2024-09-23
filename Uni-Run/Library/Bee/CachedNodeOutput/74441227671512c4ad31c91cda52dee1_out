@@ -1,0 +1,1 @@
+Packages\LSL4Unity\Runtime\Scripts\Common.cs(33,51): warning CS0618: 'Resolution.refreshRate' is obsolete: 'Resolution.refreshRate is obsolete. Use refreshRateRatio instead.'
